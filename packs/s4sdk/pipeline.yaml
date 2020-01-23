@@ -1,3 +1,4 @@
+buildPackGitURL: https://github.com/tomfrenken/jenkins-x-kubernetes.git
 extends:
   import: classic
   file: maven/pipeline.yaml
