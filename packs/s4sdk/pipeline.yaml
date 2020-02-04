@@ -34,14 +34,6 @@ pipelines:
       agent:
         image: maven
       stages:
-      - name: setup
-        steps:
-        - sh: git checkout master
-          when: "!prow"
-        - sh: git config --global credential.helper store
-          when: "!prow"
-        - sh: jx step git credentials
-          when: "!prow"
       - name: setVersion
         steps:
         - sh: echo \$(jx-release-version) > VERSION
