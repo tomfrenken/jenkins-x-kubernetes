@@ -8,7 +8,7 @@ agent:
 
 pipelines:
   pullRequest:
-    build:
+    - name: build
       steps:
       - sh: mvn versions:set -DnewVersion=$PREVIEW_VERSION
         name: set-version
@@ -18,18 +18,18 @@ pipelines:
         name: skaffold-version
       - sh: export VERSION=$PREVIEW_VERSION && skaffold build -f skaffold.yaml
         name: container-build
-    postBuild:
+    - name: postBuild
       steps:
       - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
         name: post-build
-    promote:
+    - name: promote
       steps:
       - dir: charts/preview
-        steps:
-        - sh: make preview
-          name: make-preview
-        - sh: jx preview --app $APP_NAME --dir ../..
-          name: jx-preview
+      steps:
+      - sh: make preview
+        name: make-preview
+      - sh: jx preview --app $APP_NAME --dir ../..
+        name: jx-preview
   release:
     setup:
       steps:
