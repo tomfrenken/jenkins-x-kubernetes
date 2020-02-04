@@ -5,7 +5,6 @@ pipelines:
   pullRequest:
     pipeline:
       agent:
-        label: jenkins-maven
         image: maven
       stages:
       - name: build
@@ -33,7 +32,6 @@ pipelines:
   release:
     pipeline:
       agent:
-        label: jenkins-maven
         image: maven
       stages:
       - name: setup
