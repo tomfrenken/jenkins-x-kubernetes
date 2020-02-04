@@ -1,5 +1,81 @@
-extends:
-  file: ../maven/pipeline.yaml
 env:
   - name: _JAVA_OPTIONS
     value: -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -Dsun.zip.disableMemoryMapping=true -XX:+UseParallelGC -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Xms10m -Xmx1024m
+
+agent:
+  label: jenkins-maven
+  container: maven
+
+pipelines:
+  pullRequest:
+    build:
+      steps:
+      - sh: mvn versions:set -DnewVersion=$PREVIEW_VERSION
+        name: set-version
+      - sh: mvn install
+        name: mvn-install
+      - sh: skaffold version
+        name: skaffold-version
+      - sh: export VERSION=$PREVIEW_VERSION && skaffold build -f skaffold.yaml
+        name: container-build
+    postBuild:
+      steps:
+      - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
+        name: post-build
+    promote:
+      steps:
+      - dir: charts/preview
+        steps:
+        - sh: make preview
+          name: make-preview
+        - sh: jx preview --app $APP_NAME --dir ../..
+          name: jx-preview
+  release:
+    setup:
+      steps:
+      - groovy: git 'https://REPLACE_ME_GIT_PROVIDER/REPLACE_ME_ORG/REPLACE_ME_APP_NAME.git'
+        when: "prow"
+      - sh: git checkout master
+        comment: ensure we're not on a detached head
+        when: "!prow"
+      - sh: git config --global credential.helper store
+        when: "!prow"
+      - sh: jx step git credentials
+        when: "!prow"
+    setVersion:
+      steps:
+      - sh: echo \$(jx-release-version) > VERSION
+        name: next-version
+        comment: so we can retrieve the version in later steps
+      - sh: mvn versions:set -DnewVersion=\$(cat VERSION)
+        name: set-version
+      - sh: jx step tag --version \$(cat VERSION)
+        name: tag-version
+    build:
+      steps:
+      - sh: mvn clean deploy
+        name: mvn-deploy
+      - sh: skaffold version
+        name: skaffold-version
+      - sh: export VERSION=`cat VERSION` && skaffold build -f skaffold.yaml
+        name: container-build
+      - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:\$(cat VERSION)
+        name: post-build
+    postBuild:
+      steps:
+      - groovy: always
+        when: "!prow"
+        steps:
+          - groovy: "cleanWs()"
+    promote:
+      steps:
+      - dir: charts/REPLACE_ME_APP_NAME
+        steps:
+        - sh: jx step changelog --version v\$(cat ../../VERSION)
+          name: changelog
+        - comment: release the helm chart
+          sh: jx step helm release
+          name: helm-release
+        - comment: promote through all 'Auto' promotion Environments
+          sh: jx promote -b --all-auto --timeout 1h --version \$(cat ../../VERSION)
+          name: jx-promote
