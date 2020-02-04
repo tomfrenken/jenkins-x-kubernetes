@@ -37,7 +37,6 @@ pipelines:
       - name: setup
         steps:
         - sh: git checkout master
-          comment: ensure we're not on a detached head
           when: "!prow"
         - sh: git config --global credential.helper store
           when: "!prow"
@@ -47,7 +46,6 @@ pipelines:
         steps:
         - sh: echo \$(jx-release-version) > VERSION
           name: next-version
-          comment: so we can retrieve the version in later steps
         - sh: mvn versions:set -DnewVersion=\$(cat VERSION)
           name: set-version
         - sh: jx step tag --version \$(cat VERSION)
@@ -68,9 +66,7 @@ pipelines:
           steps:
           - sh: jx step changelog --version v\$(cat ../../VERSION)
             name: changelog
-          - comment: release the helm chart
-            sh: jx step helm release
+          - sh: jx step helm release
             name: helm-release
-          - comment: promote through all 'Auto' promotion Environments
-            sh: jx promote -b --all-auto --timeout 1h --version \$(cat ../../VERSION)
+          - sh: jx promote -b --all-auto --timeout 1h --version \$(cat ../../VERSION)
             name: jx-promote
