@@ -25,13 +25,13 @@ pipelines:
     - name: promote
       steps:
       - dir: charts/preview
-      steps:
-      - sh: make preview
-        name: make-preview
-      - sh: jx preview --app $APP_NAME --dir ../..
-        name: jx-preview
+        steps:
+        - sh: make preview
+          name: make-preview
+        - sh: jx preview --app $APP_NAME --dir ../..
+          name: jx-preview
   release:
-    setup:
+    - name: setup
       steps:
       - groovy: git 'https://REPLACE_ME_GIT_PROVIDER/REPLACE_ME_ORG/REPLACE_ME_APP_NAME.git'
         when: "prow"
@@ -42,7 +42,7 @@ pipelines:
         when: "!prow"
       - sh: jx step git credentials
         when: "!prow"
-    setVersion:
+    - name: setVersion
       steps:
       - sh: echo \$(jx-release-version) > VERSION
         name: next-version
@@ -51,7 +51,7 @@ pipelines:
         name: set-version
       - sh: jx step tag --version \$(cat VERSION)
         name: tag-version
-    build:
+    - name: build
       steps:
       - sh: mvn clean deploy
         name: mvn-deploy
@@ -61,13 +61,13 @@ pipelines:
         name: container-build
       - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:\$(cat VERSION)
         name: post-build
-    postBuild:
+    - name: postBuild
       steps:
       - groovy: always
         when: "!prow"
         steps:
           - groovy: "cleanWs()"
-    promote:
+    - name: promote
       steps:
       - dir: charts/REPLACE_ME_APP_NAME
         steps:
