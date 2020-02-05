@@ -31,18 +31,18 @@ pipelines:
           - sh: jx preview --app $APP_NAME --dir ../..
             name: jx-preview
   release:
+    setVersion:
+      steps:
+        - sh: echo $(jx-release-version) > VERSION
+          name: next-version
+        - sh: mvn versions:set -DnewVersion=$(cat VERSION)
+          name: set-version
+        - sh: jx step tag --version $(cat VERSION)
+          name: tag-version
     pipeline:
       agent:
         image: maven
       stages:
-      - name: setVersion
-        steps:
-        - sh: echo \$(jx-release-version) > VERSION
-          name: next-version
-        - sh: mvn versions:set -DnewVersion=\$(cat VERSION)
-          name: set-version
-        - sh: jx step tag --version \$(cat VERSION)
-          name: tag-version
       - name: build
         steps:
         - sh: mvn clean deploy
