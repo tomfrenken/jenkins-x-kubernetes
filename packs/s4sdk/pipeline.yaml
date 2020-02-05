@@ -22,7 +22,7 @@ pipelines:
         - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
           name: post-build
       - name: promote
-        steps:
+        stages:
         - dir: charts/preview
           steps:
           - sh: make preview
@@ -53,7 +53,7 @@ pipelines:
         - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:\$(cat VERSION)
           name: post-build
       - name: promote
-        steps:
+        stages:
         - dir: charts/REPLACE_ME_APP_NAME
           steps:
           - sh: jx step changelog --version v\$(cat ../../VERSION)
