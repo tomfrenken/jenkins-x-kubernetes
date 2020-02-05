@@ -1,5 +1,62 @@
-extends:
-  file: ../maven/pipeline.yaml
 env:
   - name: _JAVA_OPTIONS
     value: -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -Dsun.zip.disableMemoryMapping=true -XX:+UseParallelGC -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Xms10m -Xmx1024m
+pipelines:
+  pullRequest:
+    pipeline:
+      agent:
+        image: maven
+      stages:
+      - name: build
+        steps:
+        - sh: mvn versions:set -DnewVersion=$PREVIEW_VERSION
+          name: set-version
+        - sh: mvn install
+          name: mvn-install
+        - sh: skaffold version
+          name: skaffold-version
+        - sh: export VERSION=$PREVIEW_VERSION && skaffold build -f skaffold.yaml
+          name: container-build
+      - name: postBuild
+        steps:
+        - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
+          name: post-build
+      - name: promote
+        dir: charts/preview
+        steps:
+        - sh: make preview
+          name: make-preview
+        - sh: jx preview --app $APP_NAME --dir ../..
+          name: jx-preview
+  release:
+    setVersion:
+      steps:
+        - sh: echo $(jx-release-version) > VERSION
+          name: next-version
+        - sh: mvn versions:set -DnewVersion=$(cat VERSION)
+          name: set-version
+        - sh: jx step tag --version $(cat VERSION)
+          name: tag-version
+    pipeline:
+      agent:
+        image: maven
+      stages:
+      - name: build
+        steps:
+        - sh: mvn clean deploy
+          name: mvn-deploy
+        - sh: skaffold version
+          name: skaffold-version
+        - sh: skaffold build -f skaffold.yaml
+          name: container-build
+        - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:${inputs.params.version}
+          name: post-build
+      - name: promote
+        dir: charts/REPLACE_ME_APP_NAME
+        steps:
+        - sh: jx step changelog --version v${inputs.params.version}
+          name: changelog
+        - sh: jx step helm release
+          name: helm-release
+        - sh: jx promote -b --all-auto --timeout 1h --version ${inputs.params.version}
+          name: jx-promote
