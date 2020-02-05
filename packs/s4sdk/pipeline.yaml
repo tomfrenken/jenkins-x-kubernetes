@@ -32,12 +32,13 @@ pipelines:
             name: jx-preview
   release:
     setVersion:
-      setVersion:
       steps:
-      - sh: mvn versions:set -DnewVersion=${inputs.params.version}
-        name: set-version
-      - sh: jx step tag --version ${inputs.params.version}
-        name: tag-version
+        - sh: echo $(jx-release-version) > VERSION
+          name: next-version
+        - sh: mvn versions:set -DnewVersion=$(cat VERSION)
+          name: set-version
+        - sh: jx step tag --version $(cat VERSION)
+          name: tag-version
     pipeline:
       agent:
         image: maven
