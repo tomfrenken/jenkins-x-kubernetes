@@ -23,7 +23,8 @@ pipelines:
           name: post-build
       - name: promote
         stages:
-        - dir: charts/preview
+        - name: nested-promote
+          dir: charts/preview
           steps:
           - sh: make preview
             name: make-preview
@@ -54,7 +55,8 @@ pipelines:
           name: post-build
       - name: promote
         stages:
-        - dir: charts/REPLACE_ME_APP_NAME
+        - name: nested-promote
+          dir: charts/REPLACE_ME_APP_NAME
           steps:
           - sh: jx step changelog --version v\$(cat ../../VERSION)
             name: changelog
