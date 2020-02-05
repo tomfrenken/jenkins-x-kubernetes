@@ -34,11 +34,11 @@ pipelines:
     setVersion:
       setVersion:
       steps:
-      - sh: echo \$(jx-release-version) > VERSION
+      - sh: echo ${inputs.params.version} > VERSION
         name: next-version
-      - sh: mvn versions:set -DnewVersion=\$(cat VERSION)
+      - sh: mvn versions:set -DnewVersion=${inputs.params.version}
         name: set-version
-      - sh: jx step tag --version \$(cat VERSION)
+      - sh: jx step tag --version ${inputs.params.version}
         name: tag-version
     pipeline:
       agent:
@@ -50,18 +50,18 @@ pipelines:
           name: mvn-deploy
         - sh: skaffold version
           name: skaffold-version
-        - sh: export VERSION=`cat VERSION` && skaffold build -f skaffold.yaml
+        - sh: skaffold build -f skaffold.yaml
           name: container-build
-        - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:\$(cat VERSION)
+        - sh: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:${inputs.params.version}
           name: post-build
       - name: promote
         stages:
         - name: nested-promote
           dir: charts/REPLACE_ME_APP_NAME
           steps:
-          - sh: jx step changelog --version v\$(cat ../../VERSION)
+          - sh: jx step changelog --version v${inputs.params.version}
             name: changelog
           - sh: jx step helm release
             name: helm-release
-          - sh: jx promote -b --all-auto --timeout 1h --version \$(cat ../../VERSION)
+          - sh: jx promote -b --all-auto --timeout 1h --version ${inputs.params.version}
             name: jx-promote
